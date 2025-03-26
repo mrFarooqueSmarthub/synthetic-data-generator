@@ -8,4 +8,5 @@ import java.util.List;
 public class ThingTemplate {
     private String name;
     private List<String> metrics;
+    private int deviceCount;
 }

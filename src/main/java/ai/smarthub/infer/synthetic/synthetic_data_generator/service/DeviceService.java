@@ -28,22 +28,27 @@ public class DeviceService {
     private SyntheticDataService syntheticDataService;
 
     public void createGatewayDevice(DataRequest dataRequest) {
-        // register device
-        registerGatewayDevice(dataRequest)
-                .flatMap(deviceCreateResponse -> enrollDevice(deviceCreateResponse.getId())
-                        .flatMap(res -> {
-                            syntheticDataService.startGeneratingData(dataRequest, res.getId());
-                                    return Mono.just(res);
-                        }))
-                .flatMap(deviceCreateResponse -> {
-                    String parentId = deviceCreateResponse.getId();
-                    return Flux.fromIterable(dataRequest.getThingTemplate())
-                            .flatMap(thingTemplate -> createThingDevice(createThingDevicePayload(parentId, thingTemplate))
-                                    .flatMap(thingCreateResponse -> enrollDevice(thingCreateResponse.getId()))
-                                    .flatMap(thingCreateResponse -> syntheticDataService.startGeneratingDataForThing(dataRequest, thingTemplate, thingCreateResponse.getId())))
-                            .then();
-                })
-                .subscribe();
+        int gatewayCount = dataRequest.getDeviceCount();
+        Flux.range(0, gatewayCount)
+                        .flatMap(i ->
+                            registerGatewayDevice(dataRequest)
+                                    .flatMap(deviceCreateResponse -> enrollDevice(deviceCreateResponse.getId())
+                                            .flatMap(res -> {
+                                                syntheticDataService.startGeneratingData(dataRequest, res.getId());
+                                                return Mono.just(res);
+                                            }))
+                                    .flatMap(deviceCreateResponse -> {
+                                        String parentId = deviceCreateResponse.getId();
+                                        return Flux.fromIterable(dataRequest.getThingTemplate())
+                                                .flatMap(thingTemplate -> Flux.range(0, thingTemplate.getDeviceCount())
+                                                                .flatMap(j -> createThingDevice(createThingDevicePayload(parentId, thingTemplate))
+                                                                        .flatMap(thingCreateResponse -> enrollDevice(thingCreateResponse.getId()))
+                                                                        .flatMap(thingCreateResponse -> syntheticDataService.startGeneratingDataForThing(dataRequest, thingTemplate, thingCreateResponse.getId()))
+                                                                )
+                                                )
+                                                .then();
+                                    })
+                        ).subscribe();
     }
 
     private DeviceCreateRequest createThingDevicePayload(String parentId, ThingTemplate thingTemplate) {

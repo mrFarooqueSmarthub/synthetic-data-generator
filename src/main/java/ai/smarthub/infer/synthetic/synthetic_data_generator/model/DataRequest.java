@@ -14,5 +14,5 @@ public class DataRequest {
     private Boolean isRealTime;
     private DataRange dataRange;
     private Strategy strategy;
+    private int deviceCount;
 }
-
