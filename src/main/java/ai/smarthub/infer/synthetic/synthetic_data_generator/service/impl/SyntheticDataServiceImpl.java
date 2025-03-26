@@ -2,8 +2,8 @@ package ai.smarthub.infer.synthetic.synthetic_data_generator.service.impl;
 
 
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.DataRequest;
-import ai.smarthub.infer.synthetic.synthetic_data_generator.model.DeviceCreateRequest;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.MetricIngestEvent;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.ThingTemplate;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.DataPoint;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.DeviceMetric;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.MetricDetail;
@@ -13,6 +13,7 @@ import ai.smarthub.infer.synthetic.synthetic_data_generator.service.SyntheticDat
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,43 +29,27 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(5);
     private final Map<String, ScheduledFuture<?>> activeTasks = new ConcurrentHashMap<>();
     private final KafkaProducerService kafkaProducerService;
-    private final DeviceService deviceService;
     private final Random random = new Random();
 
     @Override
-    public void generate(DataRequest request) {
-        String parentGatewayId = createParentGatewayDevice(request);
-        createThingDevice(request, parentGatewayId);
-        startGeneratingData(parentGatewayId, request, parentGatewayId);
-//        stopGeneratingData("dummy-id");
-    }
-
-    private void createThingDevice(DataRequest request, String parentId) {
-        request.getThingTemplate().forEach(thingTemplate -> {
-            DeviceCreateRequest deviceCreateRequest = new DeviceCreateRequest();
-            deviceCreateRequest.setName(generateRandomDeviceName());
-            deviceCreateRequest.setParentId(parentId);
-            deviceCreateRequest.setTemplateName(thingTemplate.getName());
-            deviceService.createThingDevice(deviceCreateRequest);
-        });
-    }
-
-    private String createParentGatewayDevice(DataRequest request) {
-        log.error("created device with name: {}", request.getGatewayTemplate());
-        DeviceCreateRequest deviceCreateRequest = new DeviceCreateRequest();
-        deviceCreateRequest.setName(generateRandomDeviceName());
-        deviceCreateRequest.setTemplateName(request.getGatewayTemplate());
-        return deviceService.createGatewayDevice(deviceCreateRequest);
-    }
-
-    private String startGeneratingData(String taskId, DataRequest request, String deviceId) {
-        Runnable task = () -> generateAndSendData(request, deviceId);
+    public void startGeneratingData(DataRequest request, String deviceId) {
+        Runnable task = () -> generateAndSendData(request, request.getMetrics(), deviceId);
 
         ScheduledFuture<?> future = executorService.scheduleAtFixedRate(
                 task, 0, request.getFrequency(), TimeUnit.MILLISECONDS);
 
-        activeTasks.put(taskId, future);
-        return "Task started with ID: " + taskId;
+        activeTasks.put(deviceId, future);
+    }
+
+    @Override
+    public Mono<Void> startGeneratingDataForThing(DataRequest request, ThingTemplate thingTemplate, String deviceId) {
+        Runnable task = () -> generateAndSendData(request, thingTemplate.getMetrics(), deviceId);
+
+        ScheduledFuture<?> future = executorService.scheduleAtFixedRate(
+                task, 0, request.getFrequency(), TimeUnit.MILLISECONDS);
+
+        activeTasks.put(deviceId, future);
+        return Mono.empty();
     }
 
     private String stopGeneratingData(String taskId) {
@@ -76,8 +61,9 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
         return "Task ID not found.";
     }
 
-    private void generateAndSendData(DataRequest request, String deviceId) {
-        request.getMetrics().forEach(metricName -> {
+    public void generateAndSendData(DataRequest request, List<String> metrics, String deviceId) {
+        log.error("generate metric for device id: {} with metrics: {}", deviceId, metrics);
+        metrics.forEach(metricName -> {
             // check if boolean or not
             Object value;
             if (isBooleanMetricType(metricName)) {
@@ -134,18 +120,5 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
         }
 
         return value;
-    }
-
-
-    // Generate a random device name without numbers
-    private String generateRandomDeviceName() {
-        String[] adjectives = {"Smart", "Fast", "Secure", "Advanced", "Reliable", "Efficient", "NextGen"};
-        String[] nouns = {"Sensor", "Gateway", "Node", "Hub", "Module", "Unit", "Device"};
-
-        Random random = new Random();
-        String adjective = adjectives[random.nextInt(adjectives.length)];
-        String noun = nouns[random.nextInt(nouns.length)];
-
-        return adjective + "-" + noun;
     }
 }
