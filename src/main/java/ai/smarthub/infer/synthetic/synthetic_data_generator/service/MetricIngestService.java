@@ -1,0 +1,63 @@
+package ai.smarthub.infer.synthetic.synthetic_data_generator.service;
+
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.DataPoint;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.DeviceMetric;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.MetricDetail;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.MetricsRequest;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+@AllArgsConstructor
+@Slf4j
+public class MetricIngestService {
+
+    private final WebClient webClient;
+    private final String token = "Bearer eyJraWQiOiIzM2RjZjgyYy0wNTljLTRkYTgtOGQ3Yi1iZmVkMGY3M2JmN2UiLCJhbGciOiJIUzUxMiIsInppcCI6IkRFRiJ9.eNqEVm1v2zYQ_i_-fC7II0VJ_TTFZhwhtmRIdIJ2KAzFUdGsbRLE2bBi2H8fT6LeleyLoHt4z8O70x3FfxZ_vD4sPi64uCu5UnLJUIVLKUO5DFHhMlBBWfCvJ9-TxQIWD-ezdS5UERb-6W55XwrrfLoXy6Lw75d3igXqrpAFvxPW-fznnXX-Vpy-F6_fnh5_K54fPjw8fi1fPvx4OhU_rEf59_PiI_c95iuhJLf6xSsBEsPAr4C_ypfzw9MjRUiKp6fnkgI4ncrz2Tx9Lx-roPJf59fy5-Fcviw-fi1-nEtY_GmN-J58fS48xcSyLD1cSi_0lyE7ecsT8tA_nVRwqjJ7_VUrPz9cl7-s_Vy-_LTZ2r1txr9zQBAgwQMFPgQQAmfAOXAELoBL4B5wBdwHHgAPARmg5SCgAJSAHqAC9AEDwBAEA8FBWEkBQoLwQCgQPogARAiSgc1cIki7owTpgVQgfZAByBA8Bh4HD8ET4NmAPPAUeD54AXghKAaKg0JQApQEZeNVoHxQAagQfAY-Bx_BF-BL8D0IOAQIgYTAvisIbG4BBCGEDEIOIUIoIJQQ2uyYTZXZXBnj9CCrNiU9yIEpevj0COhBRaIyMSoUo1IxKhajcjEqGKOSMSoao7IxTgwkBhIDiYHEQGJgFQQxkBhIDCSGIIYghqhiJIYghiCGIIYghiCGIIYkhiSGLTNSRkgZIWWElBFSRkgZIWWElBFSRkgZIWWElBFSRkgZIWWElBFSRkgZIataAdmXfj8lxc-SemqxynRk9DFPL81tlOmj0bv91iK2-_Q6NrMLN7G-nV1Y661-Q2x_yDbzK6MIxhuP95tuM1Hvie6j1UxOY7TeYIw224xxt9kY7m852GmwwUh3KGetTOskS7fb41rfxKuebrTVmTlmep9mpvKL1mPMea6i3T6KN8nIeQrXIX7KbRJOaq0v4yQ2cZp0cnUgx02WHvYNaYRV6Y0wl-Wcp4ny6-Y9TvJ4c2XyRrln10XTFjDxTau0z9K9DTXWLeV9l0olynNtjlu93uisoc1hTiA3g08a7ePjtf7UEluz1m7N_DY2qysL7PNe-aL86iKNsnVbpx5Qb9oDmqr1oLHO8Ta2IZuJXIcPVTt8LN6tNL2rV4csNp-ogpfxtuvcKb6NczPB8153TymRMTo3k8Ze0ae6jFe9AR1CTnEIZvomvR6DVbBDaNjEw4kYg7YWDbZKd7soofLb7lpP0X63dGh_DjrUhbDTuwud5VdxOwcDpFIcIC7vKS_NNlESf45oTm2hjYmTTTsNby0e9uuqlzc66X_xevqT1JWMSHYETZT0zq33ffqnyFs-TVO87-ViyqLbY7_7erbT6SHRhf127dnWNcYh19nR2LekOmIvbL9eDQ8G-3VsMY6fV3nXkvVA01HYDrsz3M6N2SjutMniVd590YEZHUhim27y6enctmtn173f2U3jd4g9WrL0ZgDZ6g0LkJt0P7BXV3p92A5ILhb7z7m2NWhC6cwqks50gXSA49tvYGyZB3-NSmluodKcW3Dqc0vD6bXW2nZvHG0nS82Xduigw9b21ImTqB_fO-tVmO-su2jf8ZiPYVyit5fnIpiW622Huf3HM_0_IzhzG-hGYybaGbw_MLPxNaNUz3i6bfvOvTezXluONLhHDK4ko3tHuza6TR2SMdI_v6Y3h_HfakhrrcFtpx3lg53FkeiobUc30ync_6VM76bTBaff_wt07iN08jOZ-4d0mnSkNiz3Xnm7d7eHs5qznL7el3__AwAA__8.iVbRoMdyjQzV_YEZrdL5vZDqC0I9VCrvd9_difMTYdIP_NKMGlEHi9iaqvlnmZP9_A9Gc2m6p6YzQm2LmKO4hQ";
+    private final String orgId = "a6a9a7cb-de39-4cd3-aa7d-b6086ba4a1b3";
+
+    public void ingestMetric(String deviceId) {
+
+        MetricsRequest metricsRequest = new MetricsRequest();
+        List<DeviceMetric> devices = new ArrayList<>();
+        DeviceMetric deviceMetric = new DeviceMetric();
+        deviceMetric.setDeviceId(deviceId);
+        List<MetricDetail> metricDetails = new ArrayList<>();
+        MetricDetail metricDetail = new MetricDetail();
+        metricDetail.setMetricName("CPU-Usage(DOUBLE)");
+        List<DataPoint> dataPoints = new ArrayList<>();
+        DataPoint dataPoint = new DataPoint();
+        dataPoint.setValue(3);
+        dataPoint.setTimeMs(System.currentTimeMillis());
+        dataPoints.add(dataPoint);
+        metricDetail.setDataPoints(dataPoints);
+        metricDetails.add(metricDetail);
+        deviceMetric.setMetricDetails(metricDetails);
+        devices.add(deviceMetric);
+        metricsRequest.setDevices(devices);
+
+        log.error("metric ingest data: {}", metricsRequest);
+
+        webClient.post()
+                .uri("/api/metrics")
+                .headers(headers -> {
+                    headers.set("Accept", "application/json;api-version=0.17");
+                    headers.set("x-current-org-id", orgId);
+                    headers.set("Authorization", token);
+                    headers.set("Content-Type", "application/json");
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(metricsRequest.getDevices())
+                .retrieve()
+                .bodyToMono(String.class)
+                .doOnSuccess(response -> log.info("Response for metric ingest: {}", response))
+                .doOnError(error -> log.error("Error: {}", error.getMessage()))
+                .subscribe();
+    }
+}
