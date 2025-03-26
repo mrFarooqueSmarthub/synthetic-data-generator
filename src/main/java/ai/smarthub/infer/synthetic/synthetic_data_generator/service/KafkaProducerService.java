@@ -1,13 +1,12 @@
 package ai.smarthub.infer.synthetic.synthetic_data_generator.service;
 
-import ai.smarthub.infer.synthetic.synthetic_data_generator.model.DeviceCreateEvent;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.DeviceCreateRequest;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.MetricIngestEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
-import static ai.smarthub.infer.synthetic.synthetic_data_generator.model.Constants.CRAETE_DEVICE_TOPIC;
 import static ai.smarthub.infer.synthetic.synthetic_data_generator.model.Constants.SYNTHETIC_DATA_TOPIC;
 
 @Service
@@ -15,7 +14,7 @@ import static ai.smarthub.infer.synthetic.synthetic_data_generator.model.Constan
 public class KafkaProducerService {
 
     @Autowired
-    private KafkaTemplate<String, DeviceCreateEvent> kafkaDeviceTemplate;
+    private KafkaTemplate<String, DeviceCreateRequest> kafkaDeviceTemplate;
     @Autowired
     private KafkaTemplate<String, MetricIngestEvent> kafkaMetricTemplate;
 
@@ -24,9 +23,9 @@ public class KafkaProducerService {
         kafkaMetricTemplate.send(SYNTHETIC_DATA_TOPIC, message);
     }
 
-    public void createDevice(DeviceCreateEvent deviceCreateEvent) {
-        log.error("send data through kafka: {}", deviceCreateEvent);
-        kafkaDeviceTemplate.send(CRAETE_DEVICE_TOPIC, deviceCreateEvent);
-    }
+//    public void createDevice(DeviceCreateRequest deviceCreateEvent) {
+//        log.error("send data through kafka: {}", deviceCreateEvent);
+//        kafkaDeviceTemplate.send(CRAETE_DEVICE_TOPIC, deviceCreateEvent);
+//    }
 
 }

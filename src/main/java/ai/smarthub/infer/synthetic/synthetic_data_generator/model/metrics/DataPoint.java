@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class DataPoint {
     private long timeMs;
-    private double value;
+    private Object value;
 }
