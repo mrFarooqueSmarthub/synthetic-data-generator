@@ -9,6 +9,7 @@ import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.Device
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.metrics.MetricDetail;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.service.DeviceService;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.service.KafkaProducerService;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.service.StatisticalDataGenerator;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.service.SyntheticDataService;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +19,6 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.*;
 
 
@@ -29,7 +29,7 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
     private final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(5);
     private final Map<String, ScheduledFuture<?>> activeTasks = new ConcurrentHashMap<>();
     private final KafkaProducerService kafkaProducerService;
-    private final Random random = new Random();
+    private final StatisticalDataGenerator statisticalDataGenerator;
 
     @Override
     public void startGeneratingData(DataRequest request, String deviceId) {
@@ -67,9 +67,9 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
             // check if boolean or not
             Object value;
             if (isBooleanMetricType(metricName)) {
-                value = getRandomBoolean(request.getStrategy().getAnomalyConfiguration());
+                value = statisticalDataGenerator.getRandomBoolean(request.getStrategy().getAnomalyConfiguration());
             } else {
-                value = getRandomValue(request.getDataRange().getMin(), request.getDataRange().getMax(),
+                value = statisticalDataGenerator.getRandomValue(request.getDataRange().getMin(), request.getDataRange().getMax(),
                         request.getStrategy().getAnomalyConfiguration(), request.getStrategy().getStatisticalDistribution());
             }
             MetricIngestEvent metricIngestEvent = createMetricRequestPayload(deviceId, value, metricName);
@@ -103,64 +103,4 @@ public class SyntheticDataServiceImpl implements SyntheticDataService {
         return metricsRequest;
     }
 
-    private int getRandomValue(int min, int max, String anomalyType, String statisticalDistribution) {
-        int value;
-
-        if ("Normal Distribution".equals(statisticalDistribution)) {
-            double mean = (min + max) / 2.0; // Center around the midpoint
-            double stddev = (max - min) / 6.0; // 99.7% of values within [min, max]
-            value = (int) (mean + random.nextGaussian() * stddev);
-            value = Math.max(min, Math.min(max, value)); // Clamp within range
-        } else {
-            value = random.nextInt((max - min) + 1) + min;
-        }
-
-        switch (anomalyType) {
-            case "Random Spike":
-                if (random.nextDouble() < 0.1) {
-                    return value * 3; // Simulate a spike
-                }
-                break;
-            case "Sudden Drop":
-                if (random.nextDouble() < 0.1) {
-                    return Math.max(min, value / 3); // Simulate a drop
-                }
-                break;
-            case "Gradual Increase":
-                if (random.nextDouble() < 0.05) {
-                    return Math.min(max, value + (int) (0.2 * (max - min))); // Gradually increase
-                }
-                break;
-            case "Gradual Decrease":
-                if (random.nextDouble() < 0.05) {
-                    return Math.max(min, value - (int) (0.2 * (max - min))); // Gradually decrease
-                }
-                break;
-            case "Periodic Fluctuation":
-                if (random.nextDouble() < 0.2) {
-                    return value + (random.nextBoolean() ? 5 : -5); // Small fluctuations
-                }
-                break;
-            case "Outlier":
-                if (random.nextDouble() < 0.05) {
-                    return random.nextBoolean() ? max * 2 : min / 2; // Extreme values
-                }
-                break;
-            default:
-                break;
-        }
-
-        return value;
-    }
-
-
-    private boolean getRandomBoolean(String anomalyType) {
-        boolean value = true;
-
-        if ("Random Spike".equals(anomalyType) && random.nextDouble() < 0.1) {
-            return !value; // Flip the value to simulate an anomaly
-        }
-
-        return value;
-    }
 }

@@ -2,6 +2,7 @@ package ai.smarthub.infer.synthetic.synthetic_data_generator.controller;
 
 
 import ai.smarthub.infer.synthetic.synthetic_data_generator.model.DataRequest;
+import ai.smarthub.infer.synthetic.synthetic_data_generator.model.Response;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.service.DeviceService;
 import ai.smarthub.infer.synthetic.synthetic_data_generator.service.SyntheticDataService;
 import lombok.AllArgsConstructor;
@@ -20,9 +21,11 @@ public class SyntheticDataController {
     private DeviceService deviceService;
 
     @PostMapping("/generate")
-    public ResponseEntity<String> generateData(@RequestBody DataRequest request) {
+    public ResponseEntity<Response> generateData(@RequestBody DataRequest request) {
         // Call service to generate synthetic data
         deviceService.createGatewayDevice(request);
-        return ResponseEntity.ok("Synthetic data generation started");
+        Response response = new Response();
+        response.setMessage("Synthetic data generation started");
+        return ResponseEntity.ok(response);
     }
 }
