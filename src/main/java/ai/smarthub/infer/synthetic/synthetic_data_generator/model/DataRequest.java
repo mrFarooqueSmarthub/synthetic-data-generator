@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 public class DataRequest {
     private String gatewayTemplate;
+    private String deviceName;
     private List<ThingTemplate> thingTemplate = new ArrayList<>();
     private List<String> metrics;
     private int frequency;

@@ -13,7 +13,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @Getter
@@ -29,9 +31,11 @@ public class DeviceService {
 
     public void createGatewayDevice(DataRequest dataRequest) {
         int gatewayCount = dataRequest.getDeviceCount();
+        AtomicInteger childDeviceCounter = new AtomicInteger(1);
         Flux.range(0, gatewayCount)
                         .flatMap(i ->
-                            registerGatewayDevice(dataRequest)
+                            registerGatewayDevice(dataRequest, i + 1)
+                                    .delayElement(Duration.ofMillis(500))
                                     .flatMap(deviceCreateResponse -> enrollDevice(deviceCreateResponse.getId())
                                             .flatMap(res -> {
                                                 syntheticDataService.startGeneratingData(dataRequest, res.getId());
@@ -41,9 +45,13 @@ public class DeviceService {
                                         String parentId = deviceCreateResponse.getId();
                                         return Flux.fromIterable(dataRequest.getThingTemplate())
                                                 .flatMap(thingTemplate -> Flux.range(0, thingTemplate.getDeviceCount())
-                                                                .flatMap(j -> createThingDevice(createThingDevicePayload(parentId, thingTemplate))
-                                                                        .flatMap(thingCreateResponse -> enrollDevice(thingCreateResponse.getId()))
-                                                                        .flatMap(thingCreateResponse -> syntheticDataService.startGeneratingDataForThing(dataRequest, thingTemplate, thingCreateResponse.getId()))
+                                                                .flatMap(j -> {
+                                                                    int childDeviceNumber = childDeviceCounter.getAndIncrement();
+                                                                    return createThingDevice(createThingDevicePayload(parentId, thingTemplate, childDeviceNumber))
+                                                                                    .delayElement(Duration.ofMillis(500))
+                                                                                    .flatMap(thingCreateResponse -> enrollDevice(thingCreateResponse.getId()))
+                                                                                    .flatMap(thingCreateResponse -> syntheticDataService.startGeneratingDataForThing(dataRequest, thingTemplate, thingCreateResponse.getId()));
+                                                                        }
                                                                 )
                                                 )
                                                 .then();
@@ -51,9 +59,13 @@ public class DeviceService {
                         ).subscribe();
     }
 
-    private DeviceCreateRequest createThingDevicePayload(String parentId, ThingTemplate thingTemplate) {
+    private DeviceCreateRequest createThingDevicePayload(String parentId, ThingTemplate thingTemplate, int loop) {
         DeviceCreateRequest deviceCreateRequest = new DeviceCreateRequest();
-        deviceCreateRequest.setName(generateRandomDeviceName());
+        if (thingTemplate.getDeviceName().isBlank()) {
+           deviceCreateRequest.setName(generateRandomDeviceName());
+        } else {
+           deviceCreateRequest.setName(thingTemplate.getDeviceName() + " " + loop);
+        }
         deviceCreateRequest.setParentId(parentId);
         deviceCreateRequest.setTemplateName(thingTemplate.getName());
         return deviceCreateRequest;
@@ -88,7 +100,7 @@ public class DeviceService {
                 .doOnError(error -> log.error("error while retrieving: {}", error.getMessage()));
     }
 
-    private Mono<DeviceCreateResponse> registerGatewayDevice(DataRequest dataRequest) {
+    private Mono<DeviceCreateResponse> registerGatewayDevice(DataRequest dataRequest, int loop) {
         log.error("register device starts");
         return webClient.post()
                 .uri("/api/devices")
@@ -96,16 +108,20 @@ public class DeviceService {
                     headers.set("Authorization", token);
                     headers.set("x-current-org-id", orgId);
                 })
-                .bodyValue(createGatewayDevicePayload(dataRequest))
+                .bodyValue(createGatewayDevicePayload(dataRequest, loop))
                 .retrieve()
                 .bodyToMono(DeviceCreateResponse.class)
                 .doOnSuccess(res -> log.error("create device successful: {}", res))
                 .doOnError(error -> log.error("create device failed: {}", error.getMessage()));
     }
 
-    private DeviceCreateRequest createGatewayDevicePayload(DataRequest request) {
+    private DeviceCreateRequest createGatewayDevicePayload(DataRequest request, int loop) {
         DeviceCreateRequest deviceCreateRequest = new DeviceCreateRequest();
-        deviceCreateRequest.setName(generateRandomDeviceName());
+        if (request.getDeviceName().isBlank()) {
+           deviceCreateRequest.setName(generateRandomDeviceName());
+        } else {
+           deviceCreateRequest.setName(request.getDeviceName() + " " + loop);
+        }
         deviceCreateRequest.setTemplateName(request.getGatewayTemplate());
         return deviceCreateRequest;
     }

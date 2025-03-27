@@ -7,6 +7,7 @@ import java.util.List;
 @Data
 public class ThingTemplate {
     private String name;
+    private String deviceName;
     private List<String> metrics;
     private int deviceCount;
 }
